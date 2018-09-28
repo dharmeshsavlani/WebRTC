@@ -10,13 +10,14 @@
         </style>
     </head>
     <body>
-        <h1>WebRTC Demo : Sender</h1>
+        <h1>WebRTC Demo</h1>
 
         <audio controls id="my-audio"></audio><br /><br />
         <input id="peerId" /><br /><br />
         <button onclick="makeCall()">Connect</button> <button onclick="hangCall()">Disconnect</button><br /><br />
         <button onclick="playAudio()">Play my audio</button> <button onclick="stopAudio()">Stop my audio</button>
 
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/0.3.16/peer.min.js"></script>
         <script>
             var audioPlayer = document.getElementById('my-audio');
 
