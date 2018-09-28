@@ -1,0 +1,65 @@
+
+<html>
+<head>
+    <title>WebRTC Demo</title>
+    <style>
+        audio {
+            width: 300px;
+            border: 1px solid black;
+        }
+    </style>
+</head>
+<body>
+    <h1>WebRTC Demo : Receiver</h1>
+
+    <audio controls autoplay id="their-audio"></audio><br /><br />
+
+    <script>
+        iceServerConfig = {
+            iceServers: [
+                { url: 'stun:stun.l.google.com:19302' },
+                { url: 'stun:stun1.l.google.com:19302' },
+                { url: 'turn:numb.viagenie.ca', username: 'dharmeshsawlani@promactinfo.com', credential: 'abcd@bacd' }
+            ]
+        };
+
+        var peerConnection = new RTCPeerConnection();
+        peerConnection.setConfiguration(iceServerConfig);
+
+        peerConnection.addIceCandidate(new RTCIceCandidate('abcd'));
+
+        peerConnection.onicecandidate = function (event) {
+            if (event.candidate) {
+                console.log('onicecandidate => ' + event.candidate);
+            }
+        }
+
+        var config = {
+            audio: true,
+            video: false
+        };
+
+        function gotAudio(stream) {
+            var audioTracks = stream.getAudioTracks();
+            console.log('Got stream with constraints:', config);
+            console.log('Using audio device: ' + audioTracks[0].label);
+            stream.oninactive = function () {
+                console.log('Stream ended');
+            };
+        }
+
+        function handleError(e) {
+            console.log(e);
+        }
+
+        function hangCall(call) {
+            if (call) {
+                call.close();
+                audioPlayer.srcObject = null;
+            }
+        }
+
+        navigator.mediaDevices.getUserMedia(config).then(gotAudio).catch(handleError);
+    </script>
+</body>
+</html>

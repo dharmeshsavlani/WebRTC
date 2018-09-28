@@ -1,0 +1,85 @@
+
+<html>
+    <head>
+        <title>WebRTC Demo : Sender</title>
+        <style>
+            audio {
+                width: 300px;
+                border: 1px solid black;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>WebRTC Demo : Sender</h1>
+
+        <audio controls id="my-audio"></audio><br /><br />
+        <input id="peerId" /><br /><br />
+        <button onclick="makeCall()">Connect</button> <button onclick="hangCall()">Disconnect</button><br /><br />
+        <button onclick="playAudio()">Play my audio</button> <button onclick="stopAudio()">Stop my audio</button>
+
+        <script>
+            var audioPlayer = document.getElementById('my-audio');
+
+            navigator.getWebcam = (navigator.getUserMedia ||
+                navigator.webkitGetUserMedia ||
+                navigator.mozGetUserMedia ||
+                navigator.msGetUserMedia);
+
+            var peer = new Peer(
+                {
+                    key: 'lwjd5qra8257b9',
+                    debug: 3,
+                    config: {
+                        'iceServers': [
+                            { url: 'stun:stun.l.google.com:19302' },
+                            { url: 'stun:stun1.l.google.com:19302' },
+                            { url: 'turn:numb.viagenie.ca', username: 'dharmeshsawlani@promactinfo.com', credential: 'abcd@bacd' }
+                        ]
+                    }
+                });
+
+            peer.on('open', function () {
+                console.log('Peer id: ' + peer.id);
+            });
+
+            var config = {
+                audio: true,
+                video: false
+            };
+
+            function gotAudio(stream) {
+                var audioTracks = stream.getAudioTracks();
+                console.log('Got stream with constraints:', config);
+                console.log('Using audio device: ' + audioTracks[0].label);
+                audioPlayer.srcObject = stream;
+                window.localStream = stream;
+            }
+
+            function handleError(e) {
+                console.log(e);
+            }
+
+            function makeCall() {
+                var id = document.getElementById('peerId').value;
+                window.existingCall = peer.call(id, window.localStream);
+            }
+
+            function hangCall() {
+                if (window.existingCall) {
+                    window.existingCall.close();
+                }
+            }
+
+            function playAudio() {
+                audioPlayer.srcObject = window.localStream;
+                audioPlayer.play();
+            }
+
+            function stopAudio() {
+                audioPlayer.srcObject = null;
+            }
+
+            navigator.mediaDevices.getUserMedia(config).then(gotAudio).catch(handleError);
+        </script>
+    </body>
+</html>
