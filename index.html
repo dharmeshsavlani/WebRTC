@@ -24,7 +24,6 @@
         var currentAudioTrack;
         var mute = false;
         var anyExistingCall = false;
-        var callButton = document.getElementById('callBtn');
 
         //connecting to our signaling server
         var conn = new WebSocket('wss://' + location.hostname);
@@ -167,7 +166,6 @@
             peerConnection.onaddstream = null;
 
             anyExistingCall = false;
-            callButton.innerText = 'Call';
         };
 
         //alias for sending JSON encoded messages
@@ -234,7 +232,6 @@
                 playerList.innerHTML += ' ' + peerName + '<br /><br />'
                 document.getElementById(id).srcObject = e.stream;
                 anyExistingCall = true;
-                callButton.innerText = 'Hang Call';
             };
 
             connections[peerName].peerConnection.onicecandidate = function (event) {
