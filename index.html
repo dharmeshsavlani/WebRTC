@@ -14,7 +14,10 @@
 
     <audio controls autoplay id="localaudio"></audio><br /><br />
     <input id="username" /><button onclick="doLogin();">Login</button><br /><br />
-    <input id="usernameToCall" /><button id="callBtn" onclick="doCall();">Call</button> <button onclick="muteAudio(this);">Mute</button>
+    <input id="usernameToCall" /><button id="callBtn" onclick="doCall();">Call</button> <button onclick="muteAudio(this);">Mute</button><br /><br />
+    <div style="color:red; overflow: scroll; height: 200px;" id="logDiv">
+
+    </div>
     <script>
         var name;
         var connectedUser;
@@ -27,11 +30,11 @@
         var conn = new WebSocket('wss://' + location.hostname);
 
         conn.onopen = function () {
-            console.log("Connected to the signaling server");
+            log("Connected to the signaling server");
         };
 
         conn.onmessage = function (msg) {
-            console.log("Got message", msg.data);
+            log("Got message", msg.data);
             try {
                 var data = JSON.parse(msg.data);
 
@@ -117,7 +120,7 @@
             if (!success) {
                 alert("Ooops...try a different username");
             } else {
-                console.log('Logged in...');
+                log('Logged in...');
             }
         };
 
@@ -196,8 +199,8 @@
         function gotMedia(stream) {
             var audioTracks = stream.getAudioTracks();
             currentAudioTrack = audioTracks[0];
-            console.log('Got stream with constraints:', constraints);
-            console.log('Using audio device: ' + currentAudioTrack.label);
+            log('Got stream with constraints:', constraints);
+            log('Using audio device: ' + currentAudioTrack.label);
             window.localStream = stream;
 
             peerConnection.addStream(stream);
@@ -219,7 +222,19 @@
         }
 
         function handleError(e) {
-            console.log(e);
+            log(e);
+            document.getElementById('logDiv').innerHTML += '<div>'+JSON.stringify(e)+'</div>';
+        }
+
+        function log(message) {
+            var str = '';
+            try{
+                str = JSON.stringify(message);
+            }
+            catch{
+                str = message;
+            }
+            document.getElementById('logDiv').innerHTML += '<div>'+str+'</div>';
         }
 
         var peerConnection = new RTCPeerConnection(iceServerConfig, gotMedia, handleError);
