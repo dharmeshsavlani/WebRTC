@@ -227,10 +227,10 @@
                 var id = 'player-' + peerName
                 player.id = id;
                 player.controls = 'controls';
-                player.autoplay = 'autoplay';
                 playerList.appendChild(player);
                 playerList.innerHTML += ' ' + peerName + '<br /><br />'
                 document.getElementById(id).srcObject = e.stream;
+                document.getElementById(id).play();
             };
 
             connections[peerName].peerConnection.onicecandidate = function (event) {
