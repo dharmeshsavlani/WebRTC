@@ -1,58 +1,58 @@
-
-<html>
-<head>
-    <title>WebRTC Demo</title>
-    <style>
-        audio {
-            width: 300px;
-            border: 1px solid black;
-        }
-    </style>
-    <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
-</head>
-<body>
+html>
+    <head>
+        <title>WebRTC Demo</title>
+        <style>
+            audio {
+                width: 300px;
+                border: 1px solid black;
+            }
+        </style>
+        <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+    </head>
+    <body>
     <h1>WebRTC Demo</h1>
 
-    <audio controls autoplay id="localaudio"></audio><br /><br />
+    <div id="playerList"></div>
     <input id="username" /><button onclick="doLogin();">Login</button><br /><br />
-    <input id="usernameToCall" /><button id="callBtn" onclick="doCall();">Call</button> <button onclick="muteAudio(this);">Mute</button><br /><br />
+    <button onclick="muteAudio(this);">Mute</button><br /><br />
     <div style="color:red; overflow: scroll; height: 200px;" id="logDiv">
 
     </div>
     <script>
-        var name;
-        var connectedUser;
+        var myName;
+        var connections = [];
+        var peerUsers = [];
         var currentAudioTrack;
         var mute = false;
         var anyExistingCall = false;
         var callButton = document.getElementById('callBtn');
 
         //connecting to our signaling server
-        var conn = new WebSocket('wss://' + location.hostname);
+        var conn = new WebSocket('ws://' + location.hostname);
 
         conn.onopen = function () {
             log("Connected to the signaling server");
         };
 
         conn.onmessage = function (msg) {
-            log("Got message", msg.data);
+            log(msg.data);
             try {
                 var data = JSON.parse(msg.data);
 
                 switch (data.type) {
                     case "login":
-                        handleLogin(data.success);
+                        handleLogin(data.success, data.users);
                         break;
                     //when somebody wants to call us
                     case "offer":
                         handleOffer(data.offer, data.name);
                         break;
                     case "answer":
-                        handleAnswer(data.answer);
+                        handleAnswer(data.answer, data.name);
                         break;
                     //when a remote peer sends an ice candidate to us
                     case "candidate":
-                        handleCandidate(data.candidate);
+                        handleCandidate(data.candidate, data.name);
                         break;
                     case "leave":
                         handleLeave();
@@ -69,29 +69,29 @@
         conn.onerror = handleError;
 
         function doLogin() {
-            name = document.getElementById('username').value;
-            if (name.length > 0) {
+            myName = document.getElementById('username').value;
+            if (myName.length > 0) {
                 send({
                     type: "login",
-                    name: name
+                    name: myName
                 });
             }
         }
 
         function doCall() {
+            debugger;
             if (!anyExistingCall) {
-                var callTo = document.getElementById('usernameToCall').value;
-                if (callTo.length > 0) {
-                    connectedUser = callTo;
-                    // create an offer
-                    peerConnection.createOffer(function (offer) {
-                        peerConnection.setLocalDescription(offer);
-                        send({
-                            type: "offer",
-                            offer: offer
-                        });
+                peerUsers.forEach(user => {
+                    createPeerConnection(user);
+                    connections[user].peerConnection.createOffer(function (offer) {
+                        connections[user].peerConnection.setLocalDescription(offer);
+                            send({
+                                type: "offer",
+                                offer: offer,
+                                name: user
+                            });
                     }, handleError);
-                }
+                });
             } else {
                 doHangCall();
             }
@@ -99,10 +99,11 @@
 
         function doHangCall() {
             send({
-                type: "leave"
+                type: "leave",
+                name: myName
             });
 
-            handleLeave();
+            location.reload(true);
         }
 
         function muteAudio(obj) {
@@ -117,41 +118,50 @@
             mute = !mute;
         }
 
-        function handleLogin(success) {
+        function handleLogin(success, users) {
+            debugger;
             if (!success) {
                 alert("Ooops...try a different username");
             } else {
                 log('Logged in...');
+                peerUsers = users;
+                console.log('Users: ', users);
+                doCall();
             }
         };
 
         function handleOffer(offer, name) {
-            connectedUser = name;
-            peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+            debugger;
+            if (connections[name] === undefined) {
+                createPeerConnection(name);
+            }
+            connections[name].peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
 
             //create an answer to an offer 
-            peerConnection.createAnswer(function (answer) {
-                peerConnection.setLocalDescription(answer);
+            connections[name].peerConnection.createAnswer(function (answer) {
+                connections[name].peerConnection.setLocalDescription(answer);
                 send({
                     type: "answer",
-                    answer: answer
+                    answer: answer,
+                    name: name
                 });
             }, handleError);
         };
 
         //when we got an answer from a remote user 
-        function handleAnswer(answer) {
-            peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+        function handleAnswer(answer, name) {
+            debugger;
+            connections[name].peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
         };
 
         //when we got an ice candidate from a remote user 
-        function handleCandidate(candidate) {
-            peerConnection.addIceCandidate(new RTCIceCandidate(candidate)).catch(handleError);
+        function handleCandidate(candidate, name) {
+            debugger;
+            connections[name].peerConnection.addIceCandidate(new RTCIceCandidate(candidate)).catch(handleError);
         };
 
         function handleLeave() {
-            connectedUser = null;
-            audioPlayer.src = null;
+            peerUsers.pop();
 
             peerConnection.close();
             peerConnection.onicecandidate = null;
@@ -163,11 +173,6 @@
 
         //alias for sending JSON encoded messages
         function send(message) {
-            //attach the other peer username to our messages
-            if (connectedUser) {
-                message.name = connectedUser;
-            }
-
             conn.send(JSON.stringify(message));
         };
 
@@ -184,42 +189,16 @@
             ]
         };
 
-        audioPlayer = document.getElementById('localaudio');
-
-        navigator.getMediaDevice = (navigator.getUserMedia ||
-            navigator.webkitGetUserMedia ||
-            navigator.mozGetUserMedia ||
-            navigator.msGetUserMedia);
-
-        if (!!navigator.getMediaDevice) {
-            navigator.getMediaDevice(constraints, gotMedia, handleError);
-        } else {
-            alert("WebRTC is not supported");
-        }
+        playerList = document.getElementById('playerList');
 
         function gotMedia(stream) {
-            var audioTracks = stream.getAudioTracks();
-            currentAudioTrack = audioTracks[0];
-            log('Got stream with constraints:', constraints);
-            log('Using audio device: ' + currentAudioTrack.label);
-            window.localStream = stream;
-
-            peerConnection.addStream(stream);
-
-            peerConnection.onaddstream = function (e) {
-                audioPlayer.srcObject = e.stream;
-                anyExistingCall = true;
-                callButton.innerText = 'Hang Call';
-            };
-
-            peerConnection.onicecandidate = function (event) {
-                if (event.candidate) {
-                    send({
-                        type: "candidate",
-                        candidate: event.candidate
-                    });
-                }
-            };
+            if (window.localStream === undefined) {
+                var audioTracks = stream.getAudioTracks();
+                currentAudioTrack = audioTracks[0];
+                log('Got stream with constraints:', constraints);
+                log('Using audio device: ' + currentAudioTrack.label);
+                window.localStream = stream;
+            }
         }
 
         function handleError(e) {
@@ -239,7 +218,52 @@
             console.log(message);
         }
 
-        var peerConnection = new RTCPeerConnection(iceServerConfig, gotMedia, handleError);
+        function createPeerConnection(peerName) {
+            debugger;
+            connections[peerName] = {}
+            connections[peerName].name = peerName;
+            connections[peerName].peerConnection = new RTCPeerConnection(iceServerConfig, gotMedia, handleError);
+
+            connections[peerName].peerConnection.onaddstream = function (e) {
+                debugger;
+                var player = document.createElement('audio');
+                var id = 'player-' + peerName
+                player.id = id;
+                player.controls = 'controls';
+                player.autoplay = 'autoplay';
+                playerList.appendChild(player);
+                playerList.innerHTML += ' ' + peerName + '<br /><br />'
+                document.getElementById(id).srcObject = e.stream;
+                anyExistingCall = true;
+                callButton.innerText = 'Hang Call';
+            };
+
+            connections[peerName].peerConnection.onicecandidate = function (event) {
+                debugger;
+                if (event.candidate) {
+                    send({
+                        type: "candidate",
+                        candidate: event.candidate,
+                        name: peerName
+                    });
+                }
+            };
+
+            if (window.localStream) {
+                connections[peerName].peerConnection.addStream(window.localStream);
+            }
+        }
+
+        navigator.getMediaDevice = (navigator.getUserMedia ||
+            navigator.webkitGetUserMedia ||
+            navigator.mozGetUserMedia ||
+            navigator.msGetUserMedia);
+
+        if (!!navigator.getMediaDevice) {
+            navigator.getMediaDevice(constraints, gotMedia, handleError);
+        } else {
+            alert("WebRTC is not supported");
+        }
     </script>
 </body>
 </html>

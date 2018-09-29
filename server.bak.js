@@ -37,23 +37,16 @@ wss.on('connection', function(connection) {
                 if(users[data.name]) {
                     sendTo(connection, {
                         type: "login",
-                        success: false,
-                        users: []
+                        success: false
                     });
                 } else {
-                    var ulist = [];
-                    for(var key in users) {
-                        ulist.push(key);
-                    }
-                    
                     //save user connection on the server
                     users[data.name] = connection;
                     connection.name = data.name;
                     sendTo(connection, {
                         type: "login",
-                        success: true,
-                        users: ulist
-                    });
+                        success: true
+                     });
                 }
                 break;
             case "offer":
@@ -64,6 +57,9 @@ wss.on('connection', function(connection) {
                 var conn = users[data.name];
                 
                 if(conn != null){
+                    //setting that UserA connected with UserB
+                    connection.otherName = data.name;
+                    
                     sendTo(conn, {
                         type: "offer",
                         offer: data.offer,
@@ -81,37 +77,31 @@ wss.on('connection', function(connection) {
                     connection.otherName = data.name;
                     sendTo(conn, {
                         type: "answer",
-                        answer: data.answer,
-                        name: connection.name
+                        answer: data.answer
                     });
                 }
                 break;
             case "candidate":
-                console.log("Sending candidate to:", data.name);
+                console.log("Sending candidate to:",data.name);
                 var conn = users[data.name];
                 
                 if(conn != null) {
                     sendTo(conn, {
                         type: "candidate",
-                        candidate: data.candidate,
-                        name: connection.name
+                        candidate: data.candidate
                     });
                 }
                 break;
             case "leave":
-                console.log("Disconnecting from ", data.name);
+                console.log("Disconnecting from", data.name);
                 var conn = users[data.name];
-
-                for (const key in users) {
-                    if (users.hasOwnProperty(key)) {
-                        const user = users[key];
-                        if(user.connection != null && user.connection.name != data.name) {
-                            sendTo(user.connection, {
-                                type: "leave",
-                                name: data.name
-                            });
-                        }
-                    }
+                conn.otherName = null;
+                
+                //notify the other user so he can disconnect his peer connection
+                if(conn != null) {
+                    sendTo(conn, {
+                        type: "leave"
+                    });
                 }
                 break;
             default:
@@ -126,16 +116,15 @@ wss.on('connection', function(connection) {
     connection.on("close", function() {
         if(connection.name) {
             delete users[connection.name];
-            for (const key in users) {
-                if (users.hasOwnProperty(key)) {
-                    const user = users[key];
-                    if(user.connection != null && key != data.name) {
-                        console.log("Disconnecting from ", key);
-                        sendTo(user.connection, {
-                            type: "leave",
-                            name: key
-                        });
-                    }       
+            
+            if(connection.otherName) {
+                console.log("Disconnecting from ", connection.otherName);
+                var conn = users[connection.otherName];
+                
+                if(conn != null) {
+                    sendTo(conn, {
+                        type: "leave"
+                    });
                 }
             }
         }
