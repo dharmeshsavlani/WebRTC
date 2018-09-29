@@ -4,7 +4,6 @@
         <style>
             audio {
                 width: 300px;
-                border: 1px solid black;
             }
         </style>
         <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
@@ -28,7 +27,7 @@
         var callButton = document.getElementById('callBtn');
 
         //connecting to our signaling server
-        var conn = new WebSocket('ws://' + location.hostname);
+        var conn = new WebSocket('wss://' + location.hostname);
 
         conn.onopen = function () {
             log("Connected to the signaling server");
