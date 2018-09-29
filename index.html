@@ -24,7 +24,7 @@
         var callButton = document.getElementById('callBtn');
 
         //connecting to our signaling server
-        var conn = new WebSocket('ws://' + location.hostname);
+        var conn = new WebSocket('wss://' + location.hostname);
 
         conn.onopen = function () {
             console.log("Connected to the signaling server");
