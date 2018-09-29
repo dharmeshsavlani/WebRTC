@@ -231,7 +231,6 @@
                 playerList.appendChild(player);
                 playerList.innerHTML += ' ' + peerName + '<br /><br />'
                 document.getElementById(id).srcObject = e.stream;
-                anyExistingCall = true;
             };
 
             connections[peerName].peerConnection.onicecandidate = function (event) {
