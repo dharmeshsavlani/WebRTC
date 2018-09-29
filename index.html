@@ -235,6 +235,7 @@
                 str = message;
             }
             document.getElementById('logDiv').innerHTML += '<div>'+str+'</div>';
+            console.log(message);
         }
 
         var peerConnection = new RTCPeerConnection(iceServerConfig, gotMedia, handleError);
