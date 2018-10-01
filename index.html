@@ -12,7 +12,7 @@
     <h1>WebRTC Demo</h1>
 
     <div id="playerList"></div>
-    <input id="username" /><button onclick="doLogin();">Login</button><br /><br />
+    <input id="username" /><button id="loginbtn" onclick="doLogin();" disabled>Login</button><br /><br />
     <button onclick="muteAudio(this);">Mute</button><br /><br />
     <div style="color:red; overflow: scroll; height: 200px;" id="logDiv">
 
@@ -24,11 +24,12 @@
         var currentAudioTrack;
         var mute = false;
         var anyExistingCall = false;
-
+        var loginButton = document.getElementById('loginbtn');
         //connecting to our signaling server
         var conn = new WebSocket('wss://' + location.hostname);
 
         conn.onopen = function () {
+            loginButton.disabled = false;
             log("Connected to the signaling server");
         };
 
@@ -77,7 +78,6 @@
         }
 
         function doCall() {
-            debugger;
             if (!anyExistingCall) {
                 peerUsers.forEach(user => {
                     createPeerConnection(user);
@@ -117,7 +117,6 @@
         }
 
         function handleLogin(success, users) {
-            debugger;
             if (!success) {
                 alert("Ooops...try a different username");
             } else {
@@ -129,7 +128,6 @@
         };
 
         function handleOffer(offer, name) {
-            debugger;
             if (connections[name] === undefined) {
                 createPeerConnection(name);
             }
@@ -148,13 +146,11 @@
 
         //when we got an answer from a remote user 
         function handleAnswer(answer, name) {
-            debugger;
             connections[name].peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
         };
 
         //when we got an ice candidate from a remote user 
         function handleCandidate(candidate, name) {
-            debugger;
             connections[name].peerConnection.addIceCandidate(new RTCIceCandidate(candidate)).catch(handleError);
         };
 
@@ -216,7 +212,6 @@
         }
 
         function createPeerConnection(peerName) {
-            debugger;
             connections[peerName] = {}
             connections[peerName].name = peerName;
             connections[peerName].peerConnection = new RTCPeerConnection(iceServerConfig, gotMedia, handleError);
