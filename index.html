@@ -9,257 +9,278 @@
         <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
     </head>
     <body>
-    <h1>WebRTC Demo</h1>
+        <h1>WebRTC Demo</h1>
 
-    <div id="playerList"></div>
-    <input id="username" /><button id="loginbtn" onclick="doLogin();" disabled>Login</button><br /><br />
-    <button onclick="muteAudio(this);">Mute</button><br /><br />
-    <div style="color:red; overflow: scroll; height: 200px;" id="logDiv">
+        <div id="playerList"></div>
+        <input id="username" /><button id="loginbtn" onclick="doLogin();" disabled>Login</button><br /><br />
+        <button onclick="muteAudio(this);">Mute</button><br /><br />
+        <div style="color:red; overflow: scroll; height: 200px;" id="logDiv"></div>
+        <script>
+            var myName;
+            var connections = [];
+            var peerUsers = [];
+            var currentAudioTrack;
+            var mute = false;
+            var loggedIn = false;
+            var loginButton = document.getElementById('loginbtn');
+            //connecting to our signaling server
+            var conn = new WebSocket('wss://' + location.hostname);
 
-    </div>
-    <script>
-        var myName;
-        var connections = [];
-        var peerUsers = [];
-        var currentAudioTrack;
-        var mute = false;
-        var loggedIn = false;
-        var loginButton = document.getElementById('loginbtn');
-        //connecting to our signaling server
-        var conn = new WebSocket('wss://' + location.hostname);
+            conn.onopen = function () {
+                loginButton.disabled = false;
+                log("Connected to the signaling server");
+            };
 
-        conn.onopen = function () {
-            loginButton.disabled = false;
-            log("Connected to the signaling server");
-        };
+            conn.onmessage = function (msg) {
+                log(msg.data);
+                try {
+                    var data = JSON.parse(msg.data);
 
-        conn.onmessage = function (msg) {
-            log(msg.data);
-            try {
-                var data = JSON.parse(msg.data);
+                    switch (data.type) {
+                        case "login":
+                            handleLogin(data.success, data.users);
+                            break;
+                        //when somebody wants to call us
+                        case "offer":
+                            handleOffer(data.offer, data.name);
+                            break;
+                        case "answer":
+                            handleAnswer(data.answer, data.name);
+                            break;
+                        //when a remote peer sends an ice candidate to us
+                        case "candidate":
+                            handleCandidate(data.candidate, data.name);
+                            break;
+                        case "leave":
+                            handleLeave(data.name);
+                            break;
+                        default:
+                            break;
+                    }
+                }
+                catch{
 
-                switch (data.type) {
-                    case "login":
-                        handleLogin(data.success, data.users);
-                        break;
-                    //when somebody wants to call us
-                    case "offer":
-                        handleOffer(data.offer, data.name);
-                        break;
-                    case "answer":
-                        handleAnswer(data.answer, data.name);
-                        break;
-                    //when a remote peer sends an ice candidate to us
-                    case "candidate":
-                        handleCandidate(data.candidate, data.name);
-                        break;
-                    case "leave":
-                        handleLeave(data.name);
-                        break;
-                    default:
-                        break;
+                }
+            };
+
+            conn.onerror = handleError;
+
+            function doLogin() {
+                if (!loggedIn) {
+                    myName = document.getElementById('username').value;
+                    if (myName.length > 0) {
+                        send({
+                            type: "login",
+                            name: myName
+                        });
+                    }
+                } else {
+                    doHangCall();
                 }
             }
-            catch{
 
-            }
-        };
-
-        conn.onerror = handleError;
-
-        function doLogin() {
-            myName = document.getElementById('username').value;
-            if (myName.length > 0) {
-                send({
-                    type: "login",
-                    name: myName
-                });
-            }
-        }
-
-        function doCall() {
-            if (loggedIn) {
-                peerUsers.forEach(user => {
-                    createPeerConnection(user);
-                    connections[user].peerConnection.createOffer(function (offer) {
-                        connections[user].peerConnection.setLocalDescription(offer);
+            function doCall() {
+                if (loggedIn) {
+                    peerUsers.forEach(user => {
+                        createPeerConnection(user);
+                        connections[user].peerConnection.createOffer(function (offer) {
+                            connections[user].peerConnection.setLocalDescription(offer);
                             send({
                                 type: "offer",
                                 offer: offer,
                                 name: user
                             });
-                    }, handleError);
-                });
-            } else {
-                doHangCall();
-            }
-        }
-
-        function doHangCall() {
-            send({
-                type: "leave",
-                name: myName
-            });
-
-            location.reload(true);
-        }
-
-        function muteAudio(obj) {
-            var audioTrack = window.localStream.getAudioTracks()[0];
-            if (mute) {
-                audioTrack.enabled = true;
-                obj.innerText = 'Mute';
-            } else {
-                audioTrack.enabled = false;
-                obj.innerText = 'Unmute';
-            }
-            mute = !mute;
-        }
-
-        function handleLogin(success, users) {
-            if (!success) {
-                alert("Ooops...try a different username");
-            } else {
-                log('Logged in...');
-                peerUsers = users;
-                loggedIn = true;
-                console.log('Users: ', users);
-                doCall();
-            }
-        };
-
-        function handleOffer(offer, name) {
-            if (connections[name] === undefined) {
-                createPeerConnection(name);
-            }
-            connections[name].peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-
-            //create an answer to an offer 
-            connections[name].peerConnection.createAnswer(function (answer) {
-                connections[name].peerConnection.setLocalDescription(answer);
-                send({
-                    type: "answer",
-                    answer: answer,
-                    name: name
-                });
-            }, handleError);
-        };
-
-        //when we got an answer from a remote user 
-        function handleAnswer(answer, name) {
-            connections[name].peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-            loginButton.innerText = 'Logout';
-        };
-
-        //when we got an ice candidate from a remote user 
-        function handleCandidate(candidate, name) {
-            connections[name].peerConnection.addIceCandidate(new RTCIceCandidate(candidate)).catch(handleError);
-        };
-
-        function handleLeave(name) {
-            var index = peerUsers.findIndex(a => a == name);
-            if(index > -1){
-                peerUsers.splice(index, 1);
-                connections[name].peerConnection.close();
-                connections[name].onicecandidate = null;
-                connections[name].onaddstream = null;
-                connections.splice(connections.findIndex(a => a.name == name));
-            }
-        };
-
-        //alias for sending JSON encoded messages
-        function send(message) {
-            conn.send(JSON.stringify(message));
-        };
-
-        var constraints = {
-            audio: true,
-            video: false
-        };
-
-        iceServerConfig = {
-            'iceServers': [
-                { url: 'stun:stun.l.google.com:19302' },
-                { url: 'stun:stun1.l.google.com:19302' },
-                { url: 'turn:numb.viagenie.ca', username: 'dharmeshsawlani@promactinfo.com', credential: 'abcd@bacd' }
-            ]
-        };
-
-        playerList = document.getElementById('playerList');
-
-        function gotMedia(stream) {
-            if (window.localStream === undefined) {
-                var audioTracks = stream.getAudioTracks();
-                currentAudioTrack = audioTracks[0];
-                log('Got stream with constraints:', constraints);
-                log('Using audio device: ' + currentAudioTrack.label);
-                window.localStream = stream;
-            }
-        }
-
-        function handleError(e) {
-            log(e);
-            document.getElementById('logDiv').innerHTML += '<div>'+JSON.stringify(e)+'</div>';
-        }
-
-        function log(message) {
-            var str = '';
-            try{
-                str = JSON.stringify(message);
-            }
-            catch{
-                str = message;
-            }
-            document.getElementById('logDiv').innerHTML += '<div>'+str+'</div>';
-            console.log(message);
-        }
-
-        function createPeerConnection(peerName) {
-            connections[peerName] = {}
-            connections[peerName].name = peerName;
-            connections[peerName].peerConnection = new RTCPeerConnection(iceServerConfig, gotMedia, handleError);
-
-            connections[peerName].peerConnection.onaddstream = function (e) {
-                var player = document.createElement('audio');
-                var id = 'player-' + peerName
-                player.id = id;
-                player.autoplay = 'autoplay';
-                player.controls = 'controls';
-                playerList.appendChild(player);
-                var span = document.createElement('span');
-                span.innerText = peerName;
-                playerList.appendChild(span);
-                playerList.appendChild(document.createElement('br'));
-                playerList.appendChild(document.createElement('br'));
-                document.getElementById(id).srcObject = e.stream;
-                document.getElementById(id).play();
-            };
-
-            connections[peerName].peerConnection.onicecandidate = function (event) {
-                if (event.candidate) {
-                    send({
-                        type: "candidate",
-                        candidate: event.candidate,
-                        name: peerName
+                        }, handleError);
                     });
+                }
+            }
+
+            function doHangCall() {
+                send({
+                    type: "leave",
+                    name: myName
+                });
+
+                location.reload(true);
+            }
+
+            function muteAudio(obj) {
+                var audioTrack = window.localStream.getAudioTracks()[0];
+                if (mute) {
+                    audioTrack.enabled = true;
+                    obj.innerText = 'Mute';
+                } else {
+                    audioTrack.enabled = false;
+                    obj.innerText = 'Unmute';
+                }
+                mute = !mute;
+            }
+
+            function handleLogin(success, users) {
+                if (!success) {
+                    alert("Ooops...try a different username");
+                } else {
+                    log('Logged in...');
+                    peerUsers = users;
+                    loggedIn = true;
+                    loginButton.innerText = 'Logout';
+                    console.log('Users: ', users);
+                    doCall();
                 }
             };
 
-            if (window.localStream) {
-                connections[peerName].peerConnection.addStream(window.localStream);
+            function handleOffer(offer, name) {
+                if (connections[name] === undefined) {
+                    createPeerConnection(name);
+                    peerUsers.push(name);
+                }
+                connections[name].peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+
+                //create an answer to an offer
+                connections[name].peerConnection.createAnswer(function (answer) {
+                    connections[name].peerConnection.setLocalDescription(answer);
+                    send({
+                        type: "answer",
+                        answer: answer,
+                        name: name
+                    });
+                }, handleError);
+            };
+
+            //when we got an answer from a remote user
+            function handleAnswer(answer, name) {
+                connections[name].peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+            };
+
+            //when we got an ice candidate from a remote user
+            function handleCandidate(candidate, name) {
+                connections[name].peerConnection.addIceCandidate(new RTCIceCandidate(candidate)).catch(handleError);
+            };
+
+            function handleLeave(name) {
+                var index = peerUsers.findIndex(a => a == name);
+                if (index > -1) {
+                    peerUsers.splice(index, 1);
+                    connections[name].peerConnection.close();
+                    connections[name].onicecandidate = null;
+                    connections[name].onaddstream = null;
+                    delete connections[name];
+                    playerList.removeChild(document.getElementById('playerdiv-' + name));
+                }
+            };
+
+            //alias for sending JSON encoded messages
+            function send(message) {
+                conn.send(JSON.stringify(message));
+            };
+
+            var constraints = {
+                audio: true,
+                video: false
+            };
+
+            iceServerConfig = {
+                'iceServers': [
+                    { url: 'stun:stun.l.google.com:19302' },
+                    { url: 'stun:stun1.l.google.com:19302' },
+                    { url: 'turn:numb.viagenie.ca', username: 'dharmeshsawlani@promactinfo.com', credential: 'abcd@bacd' }
+                ]
+            };
+
+            playerList = document.getElementById('playerList');
+
+            function gotMedia(stream) {
+                if (window.localStream === undefined) {
+                    var audioTracks = stream.getAudioTracks();
+                    currentAudioTrack = audioTracks[0];
+                    log('Got stream with constraints:', constraints);
+                    log('Using audio device: ' + currentAudioTrack.label);
+                    window.localStream = stream;
+                }
             }
-        }
 
-        navigator.getMediaDevice = (navigator.getUserMedia ||
-            navigator.webkitGetUserMedia ||
-            navigator.mozGetUserMedia ||
-            navigator.msGetUserMedia);
+            function handleError(e) {
+                log(e);
+                document.getElementById('logDiv').innerHTML += '<div>' + JSON.stringify(e) + '</div>';
+            }
 
-        if (!!navigator.getMediaDevice) {
-            navigator.getMediaDevice(constraints, gotMedia, handleError);
-        } else {
-            alert("WebRTC is not supported");
-        }
-    </script>
-</body>
+            function log(message) {
+                var str = '';
+                try {
+                    str = JSON.stringify(message);
+                }
+                catch{
+                    str = message;
+                }
+                document.getElementById('logDiv').innerHTML += '<div>' + str + '</div>';
+                console.log(message);
+            }
+
+            function createPeerConnection(peerName) {
+                connections[peerName] = {};
+                connections[peerName].name = peerName;
+                connections[peerName].peerConnection = new RTCPeerConnection(iceServerConfig, gotMedia, handleError);
+
+                connections[peerName].peerConnection.onaddstream = function (e) {
+                    var playerDiv = document.createElement('div');
+                    playerDiv.id = 'playerdiv-' + peerName;
+                    var player = document.createElement('audio');
+                    var id = 'player-' + peerName;
+                    player.id = id;
+                    player.autoplay = 'autoplay';
+                    player.controls = 'controls';
+                    playerDiv.appendChild(player);
+                    var span = document.createElement('span');
+                    span.innerText = peerName;
+                    playerDiv.appendChild(span);
+                    playerDiv.appendChild(document.createElement('br'));
+                    playerDiv.appendChild(document.createElement('br'));
+                    playerList.appendChild(playerDiv);
+                    document.getElementById(id).srcObject = e.stream;
+                };
+
+                connections[peerName].peerConnection.onicecandidate = function (event) {
+                    if (event.candidate) {
+                        send({
+                            type: "candidate",
+                            candidate: event.candidate,
+                            name: peerName
+                        });
+                    }
+                };
+
+                connections[peerName].peerConnection.onconnectionstatechange = function (event) {
+                    switch (connections[peerName].peerConnection.connectionState) {
+                        case "connected":
+                            alert('connected');
+                            break;
+                        case "disconnected":
+                        case "failed":
+                            // One or more transports has terminated unexpectedly or in an error
+                            alert('disconnected / failed');
+                            break;
+                        case "closed":
+                            // The connection has been closed
+                            alert('closed');
+                            break;
+                    }
+                }
+
+                if (window.localStream) {
+                    connections[peerName].peerConnection.addStream(window.localStream);
+                }
+            }
+
+            navigator.getMediaDevice = (navigator.getUserMedia ||
+                navigator.webkitGetUserMedia ||
+                navigator.mozGetUserMedia ||
+                navigator.msGetUserMedia);
+
+            if (!!navigator.getMediaDevice) {
+                navigator.getMediaDevice(constraints, gotMedia, handleError);
+            } else {
+                alert("WebRTC is not supported");
+            }
+        </script>
+    </body>
 </html>

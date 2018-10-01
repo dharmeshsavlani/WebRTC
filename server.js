@@ -105,13 +105,11 @@ wss.on('connection', function(connection) {
                     delete users[data.name];
                 }
 
-                var conn = users[data.name];
-
                 for (const key in users) {
                     if (users.hasOwnProperty(key)) {
                         const user = users[key];
-                        if(user.connection != null) {
-                            sendTo(user.connection, {
+                        if(user != null) {
+                            sendTo(user, {
                                 type: "leave",
                                 name: data.name
                             });
@@ -135,13 +133,13 @@ wss.on('connection', function(connection) {
             for (const key in users) {
                 if (users.hasOwnProperty(key)) {
                     const user = users[key];
-                    if(user.connection != null) {
-                        console.log("Disconnecting from ", key);
-                        sendTo(user.connection, {
+                    if(user != null) {
+                        console.log("Disconnecting " + connection.name + " from " + key);
+                        sendTo(user, {
                             type: "leave",
-                            name: key
+                            name: connection.name
                         });
-                    }       
+                    }
                 }
             }
         }
