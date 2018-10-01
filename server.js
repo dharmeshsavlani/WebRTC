@@ -130,6 +130,7 @@ wss.on('connection', function(connection) {
 
     connection.on("close", function() {
         if(connection.name) {
+            console.log('Closing connection...' + connection.name);
             delete users[connection.name];
             for (const key in users) {
                 if (users.hasOwnProperty(key)) {

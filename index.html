@@ -149,7 +149,6 @@
         function handleAnswer(answer, name) {
             connections[name].peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
             loginButton.innerText = 'Logout';
-            anyExistingCall = true;
         };
 
         //when we got an ice candidate from a remote user 
@@ -221,7 +220,6 @@
             connections[peerName].peerConnection = new RTCPeerConnection(iceServerConfig, gotMedia, handleError);
 
             connections[peerName].peerConnection.onaddstream = function (e) {
-                debugger;
                 var player = document.createElement('audio');
                 var id = 'player-' + peerName
                 player.id = id;
@@ -238,7 +236,6 @@
             };
 
             connections[peerName].peerConnection.onicecandidate = function (event) {
-                debugger;
                 if (event.candidate) {
                     send({
                         type: "candidate",
