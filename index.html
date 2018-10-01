@@ -23,7 +23,7 @@
         var peerUsers = [];
         var currentAudioTrack;
         var mute = false;
-        var anyExistingCall = false;
+        var loggedIn = false;
         var loginButton = document.getElementById('loginbtn');
         //connecting to our signaling server
         var conn = new WebSocket('wss://' + location.hostname);
@@ -54,7 +54,7 @@
                         handleCandidate(data.candidate, data.name);
                         break;
                     case "leave":
-                        handleLeave();
+                        handleLeave(data.name);
                         break;
                     default:
                         break;
@@ -78,7 +78,7 @@
         }
 
         function doCall() {
-            if (!anyExistingCall) {
+            if (loggedIn) {
                 peerUsers.forEach(user => {
                     createPeerConnection(user);
                     connections[user].peerConnection.createOffer(function (offer) {
@@ -122,6 +122,7 @@
             } else {
                 log('Logged in...');
                 peerUsers = users;
+                loggedIn = true;
                 console.log('Users: ', users);
                 doCall();
             }
@@ -147,6 +148,8 @@
         //when we got an answer from a remote user 
         function handleAnswer(answer, name) {
             connections[name].peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+            loginButton.innerText = 'Logout';
+            anyExistingCall = true;
         };
 
         //when we got an ice candidate from a remote user 
@@ -154,14 +157,15 @@
             connections[name].peerConnection.addIceCandidate(new RTCIceCandidate(candidate)).catch(handleError);
         };
 
-        function handleLeave() {
-            peerUsers.pop();
-
-            peerConnection.close();
-            peerConnection.onicecandidate = null;
-            peerConnection.onaddstream = null;
-
-            anyExistingCall = false;
+        function handleLeave(name) {
+            var index = peerUsers.findIndex(a => a == name);
+            if(index > -1){
+                peerUsers.splice(index, 1);
+                connections[name].peerConnection.close();
+                connections[name].onicecandidate = null;
+                connections[name].onaddstream = null;
+                connections.splice(connections.findIndex(a => a.name == name));
+            }
         };
 
         //alias for sending JSON encoded messages
