@@ -223,7 +223,11 @@
                 player.id = id;
                 player.controls = 'controls';
                 playerList.appendChild(player);
-                playerList.innerHTML += ' ' + peerName + '<br /><br />'
+                var span = document.createElement('span');
+                span.innerText = peerName;
+                playerList.appendChild(span);
+                playerList.appendChild(document.createElement('br'));
+                playerList.appendChild(document.createElement('br'));
                 document.getElementById(id).srcObject = e.stream;
                 document.getElementById(id).play();
             };
