@@ -134,7 +134,7 @@ wss.on('connection', function(connection) {
             for (const key in users) {
                 if (users.hasOwnProperty(key)) {
                     const user = users[key];
-                    if(user.connection != null && key != data.name) {
+                    if(user.connection != null) {
                         console.log("Disconnecting from ", key);
                         sendTo(user.connection, {
                             type: "leave",
