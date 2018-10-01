@@ -249,23 +249,6 @@
                     }
                 };
 
-                connections[peerName].peerConnection.onconnectionstatechange = function (event) {
-                    switch (connections[peerName].peerConnection.connectionState) {
-                        case "connected":
-                            alert('connected');
-                            break;
-                        case "disconnected":
-                        case "failed":
-                            // One or more transports has terminated unexpectedly or in an error
-                            alert('disconnected / failed');
-                            break;
-                        case "closed":
-                            // The connection has been closed
-                            alert('closed');
-                            break;
-                    }
-                }
-
                 if (window.localStream) {
                     connections[peerName].peerConnection.addStream(window.localStream);
                 }
