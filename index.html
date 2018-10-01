@@ -221,6 +221,7 @@
                 var player = document.createElement('audio');
                 var id = 'player-' + peerName
                 player.id = id;
+                player.autoplay = 'autoplay';
                 player.controls = 'controls';
                 playerList.appendChild(player);
                 var span = document.createElement('span');
