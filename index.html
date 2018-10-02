@@ -209,7 +209,7 @@
                 try {
                     str = JSON.stringify(message);
                 }
-                catch{
+                catch (e) {
                     str = message;
                 }
                 document.getElementById('logDiv').innerHTML += '<div>' + str + '</div>';
