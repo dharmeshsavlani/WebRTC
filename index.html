@@ -254,16 +254,7 @@
                 }
             }
 
-            navigator.getMediaDevice = (navigator.getUserMedia ||
-                navigator.webkitGetUserMedia ||
-                navigator.mozGetUserMedia ||
-                navigator.msGetUserMedia);
-
-            if (!!navigator.getMediaDevice) {
-                navigator.getMediaDevice(constraints, gotMedia, handleError);
-            } else {
-                alert("WebRTC is not supported");
-            }
+            navigator.mediaDevices.getUserMedia(constraints).then(gotMedia).catch(handleError);
         </script>
     </body>
 </html>

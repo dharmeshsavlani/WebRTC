@@ -11,7 +11,7 @@
     </head>
     <body>
         <h1>WebRTC Demo</h1>
-
+        <div>Run chrome using <i>--enable-usermedia-screen-capturing</i> flag.</div><br>
         <input id="username" /><button id="loginbtn" onclick="doLogin();" disabled>Login</button><br /><br />
         <button onclick="muteAudio(this);">Mute</button><br /><br />
 
@@ -255,16 +255,7 @@
                 }
             }
 
-            navigator.getMediaDevice = (navigator.getUserMedia ||
-                navigator.webkitGetUserMedia ||
-                navigator.mozGetUserMedia ||
-                navigator.msGetUserMedia);
-
-            if (!!navigator.getMediaDevice) {
-                navigator.getMediaDevice(constraints, gotMedia, handleError);
-            } else {
-                alert("WebRTC is not supported");
-            }
+            navigator.mediaDevices.getUserMedia(constraints).then(gotMedia).catch(handleError);
         </script>
     </body>
 </html>
